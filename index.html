@@ -1,0 +1,419 @@
+<html>
+    <canvas id="disp" width=750 height=750></canvas>
+    <title id="title"> Snake! </title>
+    <div id = "dataArea">
+        <p id="score">Points: 0</p>
+        <p>Snake by Youssef Bashandy V3.5</p>
+        <p id="toggle" onclick='ToggleBorderKills();'>Border Kills: On</p>
+        <p id="togglecross" onclick = 'ToggleBorderCross();'>Cross Border: Off</p>
+    </div>
+
+    <style>
+        html {
+            background: grey;
+        }
+
+        #disp {
+            margin: 0 auto;
+            Vertical-align: middle;
+        }
+
+        #dataArea {
+            color: white;
+            font-family: 'Franklin Gothic Medium';
+            font-size: 115%;
+        }
+
+        #toggle {
+            cursor: pointer;
+        }
+
+        #togglecross {
+            cursor: pointer;
+        }
+
+        #UpdateLogs {
+            float: left;
+        }
+    </style>
+
+    <script>
+        /*
+        g:71
+        o:79
+        l:76
+        d:68
+        */
+        var Gold = [71, 79, 76, 68];
+        var PressPatern = [];
+
+        var Highscore = {};
+
+        function randomNumber(min, max) {  
+            return Math.floor(Math.random() * (max - min) + min);
+        }
+
+        var AppleGives = 0;
+        
+        var OnEdge = false;
+        var Moves = false;
+        
+        var AppleColour = "red";
+
+        class Vector {
+            constructor(x, y) {
+                this.x = x
+                this.y = y
+
+                this.lastx = 0;
+                this.lasty = 0;
+            }
+
+            SLx(lastx) {
+                this.lastX = lastx;
+            }
+
+            SLy(lasty) {
+                this.lastY = lasty;
+            }
+
+            Save() {
+                this.lastX = this.x;
+                this.lastY = this.y;
+            }
+        }; 
+
+        var Points = 0;
+        var GameEnded = false;
+        var AlertMove = false;
+        var disp = document.getElementById("disp");
+
+        let SnakePieces = [];
+        var SnakeHead = new Vector(randomNumber(0, disp.width / 25) * 25, randomNumber(0, disp.height / 25) * 25);
+        let Apple = new Vector(randomNumber(0, disp.width / 25) * 25, randomNumber(0, disp.height / 25) * 25);
+        SnakePieces.push(SnakeHead)
+        var ctx = null;
+        var disp = null;
+        var ordir = null;
+        var Title=document.getElementById("title");
+        var dieOnBorder = true;
+        var Cross = false;
+        var Crossig = false;
+
+        var BorderToggle = document.getElementById("toggle")
+        onload = function(ev) {
+            disp = document.getElementById("disp");
+            ctx = disp.getContext("2d");
+            var Points = 0;
+            ctx.fillRect(0, 0, disp.width, disp.height);
+            ctx.fillStyle = "red";
+            //ctx.fillRect(250, 250, 25, 25);
+            document.addEventListener("keydown", inputBegan);
+            setInterval(newFrame, 250);
+            MoveApple(Apple.x, Apple.y);
+        }
+
+        var CrossToggle = document.getElementById("togglecross")
+        var Calls = 0;
+        var maxcount = 5;
+        function WaitTime() {
+            Calls++;
+            if(Calls == maxcount) {
+                newFrame();
+                Calls = 0;
+            }
+        }
+
+        function ToggleBorderKills() {
+            if(dieOnBorder) {
+                dieOnBorder = false;
+                BorderToggle.innerHTML = "Border Kills: Off";
+            }
+            else {
+                dieOnBorder = true;
+                Cross = false;
+                BorderToggle.innerHTML = "Border Kills: On";
+                CrossToggle.innerHTML = "Cross Border: Off";
+            }
+        }
+
+        function ToggleBorderCross() {
+            if(Cross) {
+                Cross = false;
+                CrossToggle.innerHTML = "Cross Border: Off";
+            }
+            else {
+                if(!dieOnBorder) {
+                    Cross = true;
+                    CrossToggle.innerHTML = "Cross Border: On";
+                }
+            }
+        }
+
+        function OppositeDir(dir) {
+            switch(dir) {
+                case "UP":
+                    return "DOWN";
+                case "DOWN":
+                    return "UP";
+                case "LEFT":
+                    return "RIGHT";
+                case "RIGHT":
+                    return "LEFT";
+            }
+        }
+
+        function clearDisp() {
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, disp.width, disp.height)
+        }
+
+        function DrawSnake(pos) {
+            ctx.fillStyle = "green";
+            ctx.fillRect(pos.x, pos.y, 22.5, 22.5)
+        }
+
+        function MoveApple(newx, newy) {
+            ctx.fillStyle = AppleColour;
+            ctx.fillRect(newx, newy, 22, 22)
+        }
+
+        function ClearCube(cubePos) {
+            ctx.fillStyle = "black";
+            ctx.fillRect(cubePos.x, cubePos.y, 25, 25);
+        }
+
+        function getDistance(vec1, vec2) {
+            return new Vector(Math.abs(vec1.x - vec2.x), Math.abs(vec1.y, - vec2.y));
+        }
+
+        var dir = "None";
+        var PointElement = document.getElementById("score");
+
+        function CompareVector(vec1, vec2) {
+            if(vec1.x == vec2.x && vec2.lastX == vec1.lastX) {
+                if(vec1.y == vec2.y && vec2.lastY == vec1.lastY) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function newFrame() {
+            Crossing = false;
+            var Moved = false;
+            if(!GameEnded) {
+                MoveApple(Apple.x, Apple.y);
+                ordir = dir;
+                var PreviousPos = new Vector(SnakeHead.x, SnakeHead.y);
+                switch(dir) {
+                    case "LEFT":
+                        ClearCube(SnakeHead);
+                        if(SnakeHead.x != 0) {
+                            SnakeHead.x -= 25
+                            Moved = true;
+                        }
+                        break;
+                    case "RIGHT":
+                        ClearCube(SnakeHead);
+                        if(SnakeHead.x != disp.width - 25) {
+                            SnakeHead.x += 25
+                            Moved = true;
+                        }
+                        break;
+                    case "UP":
+                        ClearCube(SnakeHead);
+                        if(SnakeHead.y != 0) {
+                            SnakeHead.y -= 25
+                            Moved = true;
+                        }
+                        break;
+                    case "DOWN":
+                        ClearCube(SnakeHead);
+                        if(SnakeHead.y != disp.height - 25) {
+                            SnakeHead.y += 25
+                            Moved = true;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+
+                if(Moved == true && !Moves) {
+                    Moves = true;
+                }
+
+                if(Moved == true) {
+                    OnEdge = false;
+                    SnakeHead.SLx(PreviousPos.x);
+                    SnakeHead.SLy(PreviousPos.y);
+                }
+                else {
+                    if(Moves) {
+                        OnEdge = true;
+                    }
+                }
+
+                if(dieOnBorder && OnEdge) {
+                    GameEnded = true;
+                    alert("You lost.");
+                    window.location.reload();
+                }
+                if(Cross && OnEdge && !Crossing) {
+                    let MOVED_FUNC = false;
+                    if(SnakeHead.x == disp.width - 25) {
+                        SnakeHead.SLx(disp.width - 25);
+                        SnakeHead.SLy(SnakeHead.y);
+                        SnakeHead.x = 0;
+                    }
+                    else if(SnakeHead.x == 0) {
+                        SnakeHead.SLx(0);
+                        SnakeHead.SLy(SnakeHead.y);
+                        SnakeHead.x = disp.width - 25;
+                    }
+                    if(SnakeHead.y == disp.height - 25) {
+                        SnakeHead.SLx(SnakeHead.x);
+                        SnakeHead.SLy(disp.height - 25);
+                        SnakeHead.y = 0;
+                    }
+                    else if(SnakeHead.y == 0) {
+                        SnakeHead.SLx(SnakeHead.x);
+                        SnakeHead.SLy(0);
+                        SnakeHead.y = disp.height - 25;
+                    }
+                    Crossing = true;
+                    Moved = true;
+                }
+
+                if(SnakeHead.x == Apple.x && SnakeHead.y == Apple.y) {
+                    Points += 1;
+                    PointElement.innerHTML = "Points: " + Points;
+                    Title.innerHTML = "Snake! Points: " + Points;
+                    Apple.x = randomNumber(0, disp.width / 25) * 25
+                    Apple.y = randomNumber(0, disp.height / 25) * 25
+                    MoveApple(Apple.x, Apple.y);
+                    // snake parts ig
+                    for(var i = 0; i <= AppleGives; i++) {
+                        var LastPiece = SnakePieces[SnakePieces.length - 1]
+                        let NewSnakePiece = new Vector(LastPiece.lastX, LastPiece.lastY)
+                        SnakePieces[SnakePieces.length] = NewSnakePiece;
+                    }
+
+                    if(10 % Points == 0) {
+                        maxcount -= 1;
+                    }
+                }
+
+                for(var i = -1; i <= SnakePieces.length - 1; i++) {
+                    if(SnakePieces.length > i) {
+                        if(i != -1 && i != 0) {
+                            const Put = false;
+                            let SPiece = SnakePieces[i];
+                            let LastSPiece = SnakePieces[i-1];
+                            if(!OnEdge && !Crossing) {
+                                ClearCube(SPiece)
+                                SPiece.SLx(SPiece.x);
+                                SPiece.SLy(SPiece.y);
+                                SPiece.x = LastSPiece.lastX;
+                                SPiece.y = LastSPiece.lastY;
+                            }
+
+                            if(SPiece.x == Apple.x && SPiece.y == Apple.y) {
+                                ClearCube(Apple);
+                                Apple.x = randomNumber(0, disp.width / 25) * 25
+                                Apple.y = randomNumber(0, disp.height / 25) * 25
+                                MoveApple(Apple.x, Apple.y);
+                            }
+                            
+                            if(SPiece.x == SnakeHead.x && SPiece.y == SnakeHead.y) {
+                                GameEnded = true;
+                                alert("You lost.");
+                                window.location.reload();
+                            }
+                            
+                            DrawSnake(SPiece);
+                        }
+                    }
+                }
+            }
+
+            DrawSnake(SnakeHead);
+        }
+
+        
+
+        function inputBegan(inputEvent) {
+            switch(inputEvent.keyCode) {
+                case 38:
+                    // go big up
+                    if(ordir != "DOWN") {
+                        dir = "UP";
+                    }
+                    break;
+                case 40:
+                    // go big down
+                    if(ordir != "UP") {
+                        dir = "DOWN";
+                    }
+                    break;
+                case 39:
+                    // go big right
+                    if(ordir != "LEFT") {
+                        dir = "RIGHT";
+                    }
+                    break;
+                case 37:
+                    // go left
+                    if(ordir != "RIGHT") {
+                        dir = "LEFT";
+                    }
+                    break;
+                case 87:
+                    // go big up
+                    if(ordir != "DOWN") {
+                        dir = "UP";
+                    }
+                    break;
+                case 83:
+                    // go big down
+                    if(ordir != "UP") {
+                        dir = "DOWN";
+                    }
+                    break;
+                case 65:
+                    // go left
+                    if(ordir != "RIGHT") {
+                        dir = "LEFT";
+                    }
+                    break;
+                case 68:
+                    // go big right
+                    if(ordir != "LEFT") {
+                        dir = "RIGHT";
+                    }
+                    break;
+                default:
+                    MoveApple(Apple.x, Apple.y);
+                    alert(ordir);
+            }
+            
+            var IsOne = false;
+
+            PressPatern.push(inputEvent.keyCode);
+
+            for(var i = 0; i <= PressPatern.length - 1; i++) {
+                let GCode = Gold[i];
+                let PCode = PressPatern[i];
+                if(GCode != PCode) {
+                    PressPatern = [];
+                }
+            }
+
+            if(PressPatern.length == 4) {
+                AppleColour = "gold";
+                PressPatern = [];
+                AppleGives = 100;
+            }
+        }
+    </script>
+</html>
